@@ -1,0 +1,6 @@
+.vagrant/*
+.vagrant
+.DS_Store
+*.swp
+doc/.DS_Store
+./keys/*

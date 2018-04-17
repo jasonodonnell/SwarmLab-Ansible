@@ -1,0 +1,28 @@
+---
+- hosts: swarm-nfs
+  vars:
+    nfs_export_ip: "192.168.2.0/24"
+  roles:
+  - common
+  - nfs-server
+
+- hosts: swarm-masters 
+  vars:
+    nfs_server_ip: "swarm-nfs"
+    swarm_manager_addr: "192.168.2.21"
+  roles:
+  - common
+  - nfs-client
+  - docker
+  - swarm-manager
+
+- hosts: swarm-nodes
+  vars:
+    nfs_server_ip: "swarm-nfs"
+    swarm_manager_addr: "192.168.2.21"
+    swarm_manager_port: "2377"
+  roles:
+  - common
+  - nfs-client
+  - docker
+  - swarm-worker

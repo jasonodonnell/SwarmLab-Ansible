@@ -1,0 +1,40 @@
+---
+- name: Install Docker Swarm Dependencies
+  become: yes
+  yum:
+    name: "{{ item }}"
+    state: installed
+  with_items:
+  - yum-utils
+  - device-mapper-persistent-data
+  - lvm2
+
+- name: Add Docker CE Repo
+  become: yes
+  command: yum-config-manager --add-repo {{ docker_ce_repo }}
+
+- name: Install Docker
+  become: yes
+  yum:
+    name: "docker-ce"
+    state: installed
+
+- name: Ensure Docker Group
+  become: yes
+  group:
+    name: docker
+    state: present
+
+- name: Adding vagrant User To docker Group
+  become: yes
+  user: 
+    name: vagrant
+    groups: docker
+    append: yes
+
+- name: Enable and Start Docker
+  become: yes
+  service:
+    name: "docker"
+    enabled: yes
+    state: started

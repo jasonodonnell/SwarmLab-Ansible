@@ -1,0 +1,62 @@
+---
+- name: Configure Firewalld
+  become: yes
+  firewalld:
+    port: "{{ item }}"
+    permanent: true
+    state: enabled
+  with_items:
+  - '2376/tcp'
+  - '2377/tcp'
+  - '7946/tcp'
+  - '7946/udp'
+  - '4789/udp'
+
+- name: Bounce Firewalld
+  become: yes
+  service:
+    name: "firewalld"
+    enabled: yes
+    state: restarted
+
+- name: Get IP Address
+  set_fact:
+    advertise_addr: "{% if ansible_default_ipv4.address != '10.0.2.15' %}{{ ansible_default_ipv4.address }}{% else %}{{ ansible_all_ipv4_addresses[1] }}{% endif %}"
+
+- name: Init Docker Swarm Manager
+  become: yes
+  command: "docker swarm init --advertise-addr {{ advertise_addr }}"
+  changed_when: false
+  args:
+    creates: /etc/.swarminit
+  when: inventory_hostname == groups["swarm-masters"][0]
+
+- name: Block swarm init
+  become: yes
+  command: touch /etc/.swarminit
+
+- name: Join Docker Swarm as Manager
+  become: yes
+  command: >
+    docker swarm join
+    --token {{ hostvars[groups['swarm-masters'][0]]['docker_swarm_manager_token']['stdout'] }}
+    --advertise-addr {{ advertise_addr }}
+    {{ swarm_manager_addr }}:{{ swarm_manager_port }}
+  changed_when: false
+  args:
+    creates: /etc/.swarminit
+  when: inventory_hostname != groups["swarm-masters"][0]
+
+- name: Capturing Docker Swarm Manager join-token
+  become: yes
+  command: "docker swarm join-token -q manager"
+  changed_when: false
+  register: "docker_swarm_manager_token"
+  when: inventory_hostname == groups["swarm-masters"][0]
+
+- name: Capturing Docker Swarm Worker join-token
+  become: yes
+  command: "docker swarm join-token -q worker"
+  changed_when: false
+  register: "docker_swarm_worker_token"
+  when: inventory_hostname == groups["swarm-masters"][0]
